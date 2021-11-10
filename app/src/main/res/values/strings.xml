@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Boot Image Tool</string>
+    <string name="root_required">Root is required</string>
+    <string name="device">Device</string>
+    <string name="model">Model</string>
+    <string name="build_number">Build Number</string>
+    <string name="slot_suffix">Slot Suffix</string>
+    <string name="status">Status</string>
+    <string name="patched">Patched</string>
+    <string name="stock">Stock</string>
+    <string name="backup">Backup</string>
+    <string name="found">Found</string>
+    <string name="missing">Missing</string>
+    <string name="invalid">Invalid</string>
+    <string name="restore">Restore</string>
+    <string name="download">Download</string>
+</resources>
