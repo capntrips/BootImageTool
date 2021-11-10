@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.capntrips.bootimagetool.ui.theme.BootImageToolTheme
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun MainContent(viewModel: MainViewModelInterface) {
@@ -69,14 +70,14 @@ fun MainContent(viewModel: MainViewModelInterface) {
         Spacer(Modifier.height(16.dp))
         SlotCard(
             title = "boot_a",
-            slot = slotA,
+            slotStateFlow = uiState.slotA,
             isActive = uiState.slotSuffix == "_a",
             isFallback = slotB.patchStatus != PatchStatus.Stock || slotB.sha1 != slotA.sha1
         )
         Spacer(Modifier.height(16.dp))
         SlotCard(
             title = "boot_b",
-            slot = slotB,
+            slotStateFlow = uiState.slotB,
             isActive = uiState.slotSuffix == "_b",
             isFallback = slotA.patchStatus != PatchStatus.Stock || slotA.sha1 != slotB.sha1
         )
@@ -86,10 +87,11 @@ fun MainContent(viewModel: MainViewModelInterface) {
 @Composable
 fun SlotCard(
     title: String,
-    slot: SlotStateInterface,
+    slotStateFlow: StateFlow<SlotStateInterface>,
     isActive: Boolean,
     isFallback: Boolean
 ) {
+    val slot by slotStateFlow.collectAsState()
     val isRefreshing by slot.isRefreshing.collectAsState()
     DataCard (
         title = title,
