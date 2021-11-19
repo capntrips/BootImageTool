@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,6 +92,7 @@ fun SlotCard(
     isActive: Boolean,
     isFallback: Boolean
 ) {
+    // TODO: hoist state?
     val slot by slotStateFlow.collectAsState()
     val isRefreshing by slot.isRefreshing.collectAsState()
     DataCard (
@@ -231,6 +233,7 @@ fun Card(
 fun DataRow(
     label: String,
     value: String,
+    valueColor: Color = Color.Unspecified,
     valueStyle: TextStyle = MaterialTheme.typography.titleSmall
 ) {
     Row {
@@ -240,11 +243,14 @@ fun DataRow(
             style = MaterialTheme.typography.labelMedium
         )
         Spacer(Modifier.width(8.dp))
-        Text(
-            modifier = Modifier.alignByBaseline(),
-            text = value,
-            style = valueStyle
-        )
+        SelectionContainer(Modifier.alignByBaseline()) {
+            Text(
+                modifier = Modifier.alignByBaseline(),
+                text = value,
+                color = valueColor,
+                style = valueStyle
+            )
+        }
     }
 }
 
@@ -254,21 +260,11 @@ fun HasStatusDataRow(
     value: String,
     hasStatus: Boolean
 ) {
-    Row {
-        val color = if (hasStatus) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-        Text(
-            modifier = Modifier.alignByBaseline(),
-            text = label,
-            style = MaterialTheme.typography.labelMedium
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            modifier = Modifier.alignByBaseline(),
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            color = color
-        )
-    }
+    DataRow(
+        label = label,
+        value = value,
+        valueColor = if (hasStatus) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    )
 }
 
 @Composable
@@ -277,10 +273,9 @@ fun IsPatchedDataRow(
     isActive: Boolean,
     isPatched: Boolean
 ) {
-    val text = stringResource(if (isPatched) R.string.patched else R.string.stock)
     HasStatusDataRow(
         label = label,
-        value = text,
+        value = stringResource(if (isPatched) R.string.patched else R.string.stock),
         hasStatus = if (isActive) isPatched else !isPatched
     )
 }
@@ -290,16 +285,15 @@ fun BackupStatusDataRow(
     label: String,
     backupStatus: BackupStatus
 ) {
-    val text = stringResource(
-        when (backupStatus) {
-            BackupStatus.Found -> R.string.found
-            BackupStatus.Missing -> R.string.missing
-            else -> R.string.invalid
-        }
-    )
     HasStatusDataRow(
         label = label,
-        value = text,
+        value = stringResource(
+            when (backupStatus) {
+                BackupStatus.Found -> R.string.found
+                BackupStatus.Missing -> R.string.missing
+                else -> R.string.invalid
+            }
+        ),
         hasStatus = backupStatus == BackupStatus.Found
     )
 }
