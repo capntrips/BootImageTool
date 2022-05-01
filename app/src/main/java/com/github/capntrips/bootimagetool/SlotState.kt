@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
-class SlotState(context: Context, private val boot: File, private val _isRefreshing : MutableStateFlow<Boolean>, private val isImage: Boolean = false) : ViewModel(), SlotStateInterface {
+class SlotState(context: Context, private val boot: File, private val _isRefreshing : MutableStateFlow<Boolean>?, private val isImage: Boolean = false) : ViewModel(), SlotStateInterface {
     companion object {
         const val TAG: String = "BootImageTool/SlotState"
     }
@@ -33,7 +33,7 @@ class SlotState(context: Context, private val boot: File, private val _isRefresh
     override lateinit var downloadStatus: DownloadStatus
 
     override val isRefreshing: StateFlow<Boolean>
-        get() = _isRefreshing.asStateFlow()
+        get() = _isRefreshing!!.asStateFlow()
 
     init {
         refresh(context)
@@ -63,8 +63,10 @@ class SlotState(context: Context, private val boot: File, private val _isRefresh
                 }
             }
             ramdisk.delete()
-            refreshBackupStatus()
-            refreshDownloadStatus(context)
+            if (!isImage) {
+                refreshBackupStatus()
+                refreshDownloadStatus(context)
+            }
         } else {
             log(context, "Invalid boot.img", shouldThrow = true)
         }
@@ -95,8 +97,9 @@ class SlotState(context: Context, private val boot: File, private val _isRefresh
             MediaStore.DownloadColumns._ID,
             MediaStore.DownloadColumns.DISPLAY_NAME
         )
-        val selection = "${MediaStore.DownloadColumns.DISPLAY_NAME} = ?"
-        val selectionArgs = arrayOf("boot_${sha1.substring(0, 8)}.img")
+        val selection = "${MediaStore.DownloadColumns.DISPLAY_NAME} LIKE ?"
+        val suffix = if (patchStatus == PatchStatus.Patched) "-patched" else ""
+        val selectionArgs = arrayOf("boot_${sha1.substring(0, 8)}${suffix}%.img")
         val sortOrder = "${MediaStore.DownloadColumns.DISPLAY_NAME} ASC"
         val query = context.contentResolver.query(
             collection,
@@ -124,7 +127,8 @@ class SlotState(context: Context, private val boot: File, private val _isRefresh
             val inputStream = context.contentResolver.openInputStream(downloadList[0].uri)
             file.writeBytes(inputStream!!.readBytes())
             inputStream.close()
-            downloadStatus = if (Shell.su("/data/adb/magisk/magiskboot sha1 boot.img").exec().out[0] == sha1) {
+            val state = SlotState(context, file, null, true)
+            downloadStatus = if (state.sha1 == sha1) {
                 DownloadStatus.Found
             } else {
                 DownloadStatus.Invalid
@@ -137,7 +141,7 @@ class SlotState(context: Context, private val boot: File, private val _isRefresh
 
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            _isRefreshing.emit(true)
+            _isRefreshing!!.emit(true)
             block()
             _isRefreshing.emit(false)
         }
@@ -148,7 +152,8 @@ class SlotState(context: Context, private val boot: File, private val _isRefresh
         launch {
             val contentResolver: ContentResolver = context.contentResolver
             val contentValues = ContentValues()
-            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "boot_${sha1.substring(0, 8)}.img")
+            val suffix = if (patchStatus == PatchStatus.Patched) "-patched" else ""
+            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "boot_${sha1.substring(0, 8)}${suffix}.img")
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
             val uri = contentResolver.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), contentValues)
             val outputStream = contentResolver.openOutputStream(uri!!)

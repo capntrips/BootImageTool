@@ -25,6 +25,7 @@ import com.topjohnwu.superuser.Shell
 @ExperimentalMaterial3Api
 class MainActivity : ComponentActivity() {
     private lateinit var mainListener: MainListener
+    var isAwaitingResult = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,7 +88,9 @@ class MainActivity : ComponentActivity() {
     public override fun onResume() {
         super.onResume()
         if (this::mainListener.isInitialized) {
-            mainListener.resume()
+            if (!isAwaitingResult) {
+                mainListener.resume()
+            }
         }
     }
 }

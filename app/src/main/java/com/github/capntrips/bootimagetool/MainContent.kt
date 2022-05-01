@@ -48,6 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.capntrips.bootimagetool.ui.theme.BootImageToolTheme
 import kotlinx.coroutines.flow.StateFlow
 
+@ExperimentalMaterial3Api
 @Composable
 fun MainContent(viewModel: MainViewModelInterface) {
     val uiState by viewModel.uiState.collectAsState()
@@ -72,25 +73,23 @@ fun MainContent(viewModel: MainViewModelInterface) {
         SlotCard(
             title = "boot_a",
             slotStateFlow = uiState.slotA,
-            isActive = uiState.slotSuffix == "_a",
-            isFallback = slotB.patchStatus != PatchStatus.Stock || slotB.sha1 != slotA.sha1
+            isActive = uiState.slotSuffix == "_a"
         )
         Spacer(Modifier.height(16.dp))
         SlotCard(
             title = "boot_b",
             slotStateFlow = uiState.slotB,
-            isActive = uiState.slotSuffix == "_b",
-            isFallback = slotA.patchStatus != PatchStatus.Stock || slotA.sha1 != slotB.sha1
+            isActive = uiState.slotSuffix == "_b"
         )
     }
 }
 
+@ExperimentalMaterial3Api
 @Composable
 fun SlotCard(
     title: String,
     slotStateFlow: StateFlow<SlotStateInterface>,
-    isActive: Boolean,
-    isFallback: Boolean
+    isActive: Boolean
 ) {
     // TODO: hoist state?
     val slot by slotStateFlow.collectAsState()
@@ -100,15 +99,19 @@ fun SlotCard(
         button = {
             if (!isRefreshing) {
                 if (isActive) {
-                    if (slot.patchStatus == PatchStatus.Patched && slot.backupStatus != BackupStatus.Found) {
-                        RestoreButton(slot)
+                    if (slot.patchStatus == PatchStatus.Patched) {
+                        if (slot.backupStatus != BackupStatus.Found) {
+                            RestoreButton(slot)
+                        } else if (slot.downloadStatus != DownloadStatus.Found) {
+                            DownloadButton(slot)
+                        }
                     } else {
-                        if (isFallback && slot.downloadStatus != DownloadStatus.Found) {
+                        if (slot.downloadStatus != DownloadStatus.Found) {
                             DownloadButton(slot)
                         }
                     }
                 } else {
-                    if (slot.patchStatus == PatchStatus.Stock && slot.downloadStatus != DownloadStatus.Found) {
+                    if (slot.downloadStatus != DownloadStatus.Found) {
                         DownloadButton(slot)
                     }
                 }
@@ -153,22 +156,30 @@ fun DownloadButton(slot: SlotStateInterface) {
     }
 }
 
+@ExperimentalMaterial3Api
 @Composable
 fun RestoreButton(slot: SlotStateInterface) {
+    val mainActivity = LocalContext.current as MainActivity
     val result = remember { mutableStateOf<Uri?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         result.value = it
+        if (it == null) {
+            mainActivity.isAwaitingResult = false
+        }
     }
     Button(
         modifier = Modifier.padding(0.dp),
         shape = RoundedCornerShape(4.0.dp),
-        onClick = { launcher.launch("*/*") }
+        onClick = {
+            mainActivity.isAwaitingResult = true
+            launcher.launch("*/*")
+        }
     ) {
         Text(stringResource(R.string.restore))
     }
     result.value?.let {uri ->
-        val context = LocalContext.current
-        slot.restoreBackup(context, uri)
+        slot.restoreBackup(mainActivity, uri)
+        mainActivity.isAwaitingResult = false
     }
 }
 
